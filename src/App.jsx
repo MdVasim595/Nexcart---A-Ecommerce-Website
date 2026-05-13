@@ -10,7 +10,7 @@ import Admin from "./pages/Admin";
 import Dashboard from "./pages/Dashboard";
 import Reseller from "./pages/Reseller";
 import ProductDetail from "./pages/ProductDetail";
-import Checkout from "./pages/Checkout";
+import Checkout from "./pages/checkout";
 import ResellerOrders from "./pages/ResellerOrders";
 import Withdraw from "./pages/Withdraw";
 import Analytics from "./pages/Analytics";
