@@ -1,16 +1,15 @@
 import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import axios from "axios";
-const API_URL = import.meta.env.VITE_API_URL;
+import { api } from "../utils/api";
 
 const OrderDetail = () => {
   const { id } = useParams();
   const [order, setOrder] = useState(null);
 
   useEffect(() => {
-    axios.get(`${API_URL}/order/${id}`)
+    api.get(`/order/${id}`)
       .then(res => setOrder(res.data));
-  }, []);
+  }, [id]);
 
   if (!order) return <p className="p-4">Loading...</p>;
 
@@ -41,7 +40,7 @@ const OrderDetail = () => {
       <div className="bg-white p-4 rounded shadow mb-4">
         <p className="font-semibold mb-1">{order.status}</p>
         <p className="text-sm text-gray-500">
-          {new Date(order.createdAt).toDateString()}
+          {new Date(order.date).toDateString()}
         </p>
       </div>
 

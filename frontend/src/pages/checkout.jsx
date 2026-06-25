@@ -2,9 +2,7 @@ import { useEffect, useState } from "react";
 import { getData, setData } from "../utils/localStorageHelper";
 import { useNavigate } from "react-router-dom";
 import AddressForm from "../components/AddressForm";
-import axios from "axios";
-
-const API_URL = import.meta.env.VITE_API_URL;
+import { api } from "../utils/api";
 
 const Checkout = () => {
   const nav = useNavigate();
@@ -25,7 +23,7 @@ const Checkout = () => {
       setLoadingAddresses(true);
 
       try {
-        const res = await axios.get(`${API_URL}/user/${user.email}`);
+        const res = await api.get("/user/me");
         const savedAddresses = Array.isArray(res.data?.addresses)
           ? res.data.addresses
           : [];
@@ -63,8 +61,7 @@ const Checkout = () => {
     }
 
     try {
-      await axios.put(`${API_URL}/user/update`, {
-        email: user.email,
+      await api.put("/user/update", {
         addresses: updatedAddresses,
       });
     } catch (err) {

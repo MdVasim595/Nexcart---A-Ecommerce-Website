@@ -1,7 +1,23 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { adminApi } from "../utils/api";
 
 const API_URL = import.meta.env.VITE_API_URL;
+
+const showValue = (value) => {
+  if (value === null || value === undefined || value === "") return "Not available";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (Array.isArray(value)) return value.length ? `${value.length} saved` : "None";
+  if (typeof value === "object") return JSON.stringify(value);
+  return value;
+};
+
+const DetailRow = ({ label, value }) => (
+  <div className="border-b border-gray-100 py-2">
+    <p className="text-xs uppercase text-gray-500">{label}</p>
+    <p className="font-medium break-words">{showValue(value)}</p>
+  </div>
+);
 
 const Admin = () => {
   const [tab, setTab] = useState("dashboard");
@@ -30,43 +46,43 @@ const Admin = () => {
     featured: false,
   });
 
+  async function fetchOrders() {
+    const res = await adminApi.get("/order");
+    setOrders(res.data);
+  }
+
+  async function fetchProducts() {
+    const res = await axios.get(`${API_URL}/product`);
+    setProducts(res.data);
+  }
+
+  async function fetchUsers() {
+    const res = await adminApi.get("/user/admin/all");
+    setUsers(res.data);
+  }
+
+  async function fetchStats() {
+    const res = await adminApi.get("/order/stats/summary");
+    setStats(res.data);
+  }
+
   useEffect(() => {
+    // All state updates happen after these asynchronous requests resolve.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchOrders();
     fetchProducts();
     fetchUsers();
     fetchStats();
   }, []);
 
-  const fetchOrders = async () => {
-    const res = await axios.get(`${API_URL}/order`);
-    setOrders(res.data);
-  };
-
-  const fetchProducts = async () => {
-    const res = await axios.get(`${API_URL}/product`);
-    setProducts(res.data);
-  };
-
-  const fetchUsers = async () => {
-    const res = await axios.get(`${API_URL}/user/admin/all`);
-    setUsers(res.data);
-  };
-
-  const fetchStats = async () => {
-    const res = await axios.get(`${API_URL}/order/stats/summary`);
-    setStats(res.data);
-  };
-
   const fetchUserDetail = async (email) => {
     setUserDetailLoading(true);
     setUserDetailError("");
 
     try {
-      const res = await axios.get(
-        `${API_URL}/user/admin/${encodeURIComponent(email)}`
-      );
+      const res = await adminApi.get(`/user/admin/${encodeURIComponent(email)}`);
       setSelectedUser(res.data);
-    } catch (err) {
+    } catch {
       setSelectedUser(null);
       setUserDetailError("Unable to load user details");
     }
@@ -77,7 +93,7 @@ const Admin = () => {
   const addProduct = async () => {
     if (!form.title || !form.price) return alert("Fill fields");
 
-    await axios.post(`${API_URL}/product/add`, {
+    await adminApi.post("/product/add", {
       ...form,
       sizes: form.sizes ? form.sizes.split(",").map((s) => s.trim()) : [],
     });
@@ -87,12 +103,12 @@ const Admin = () => {
   };
 
   const deleteProduct = async (id) => {
-    await axios.delete(`${API_URL}/product/${id}`);
+    await adminApi.delete(`/product/${id}`);
     fetchProducts();
   };
 
   const updateStatus = async (id, status) => {
-    await axios.put(`${API_URL}/order/${id}`, { status });
+    await adminApi.put(`/order/${id}`, { status });
     fetchOrders();
   };
 
@@ -106,21 +122,6 @@ const Admin = () => {
     if (!value) return "Not available";
     return new Date(value).toLocaleString();
   };
-
-  const showValue = (value) => {
-    if (value === null || value === undefined || value === "") return "Not available";
-    if (typeof value === "boolean") return value ? "Yes" : "No";
-    if (Array.isArray(value)) return value.length ? `${value.length} saved` : "None";
-    if (typeof value === "object") return JSON.stringify(value);
-    return value;
-  };
-
-  const DetailRow = ({ label, value }) => (
-    <div className="border-b border-gray-100 py-2">
-      <p className="text-xs uppercase text-gray-500">{label}</p>
-      <p className="font-medium break-words">{showValue(value)}</p>
-    </div>
-  );
 
   const renderObjectDetails = (data, hiddenKeys = []) => {
     if (!data || Object.keys(data).length === 0) {

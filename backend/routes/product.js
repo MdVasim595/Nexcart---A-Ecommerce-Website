@@ -1,8 +1,9 @@
 const router = require("express").Router();
 const Product = require("../models/product");
+const { requireAdmin } = require("../middleware/auth");
 
 // ADD PRODUCT
-router.post("/add", async (req, res) => {
+router.post("/add", requireAdmin, async (req, res) => {
   try {
     const product = new Product(req.body);
     await product.save();
@@ -19,7 +20,7 @@ router.get("/", async (req, res) => {
 });
 
 // DELETE PRODUCT
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAdmin, async (req, res) => {
   await Product.findByIdAndDelete(req.params.id);
   res.json({ message: "Deleted" });
 });

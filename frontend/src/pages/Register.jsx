@@ -41,6 +41,7 @@ const Register = () => {
       console.log("SUCCESS:", res.data); // 👈 add this
 
       localStorage.setItem("user", JSON.stringify(res.data.user));
+      localStorage.setItem("token", res.data.token);
       window.location.reload();
       nav("/");
     } catch (err) {

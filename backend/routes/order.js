@@ -1,104 +1,65 @@
 const router = require("express").Router();
 const Order = require("../models/Order");
+const { requireAuth, requireAdmin } = require("../middleware/auth");
+const { priceItems, cleanCheckout } = require("../utils/orderPricing");
 
-// CREATE ORDER
-router.post("/create", async (req, res) => {
+router.post("/create", requireAuth, async (req, res, next) => {
   try {
-    const order = new Order(req.body);
-    await order.save();
-
-    res.json({ message: "Order saved", order });
-  } catch (err) {
-    res.status(500).json({ message: "Error saving order" });
-  }
-});
-
-// GET ALL ORDERS (ADMIN - with summary fields)
-router.get("/", async (req, res) => {
-  try {
-    const orders = await Order.find().sort({ date: -1 });
-
-    const formatted = orders.map((o) => ({
-      _id: o._id,
-      user: o.user,
-      email: o.user?.email,
-      address: o.address,
-      items: o.items || [],
-      total: o.total,
-      finalAmount: o.finalAmount,
-      status: o.status,
-      date: o.date,
-      itemsCount: o.items?.length || 0,
-      payment: o.payment,
-    }));
-
-    res.json(formatted);
-  } catch (err) {
-    res.status(500).json({ message: "Error fetching orders" });
-  }
-});
-
-// GET ORDERS BY USER
-router.get("/user/:email", async (req, res) => {
-  try {
-    const orders = await Order.find({ "user.email": req.params.email }).sort({ date: -1 });
-
-    res.json(orders);
-  } catch (err) {
-    res.status(500).json({ message: "Error fetching user orders" });
-  }
-});
-
-// ADMIN DASHBOARD STATS
-router.get("/stats/summary", async (req, res) => {
-  try {
-    const orders = await Order.find();
-
-    const totalOrders = orders.length;
-    const totalRevenue = orders.reduce(
-      (sum, o) => sum + (o.finalAmount || 0),
-      0
-    );
-    const pending = orders.filter((o) => o.status === "Pending").length;
-    const delivered = orders.filter((o) => o.status === "Delivered").length;
-
-    res.json({
-      totalOrders,
-      totalRevenue,
-      pending,
-      delivered,
-    });
-  } catch (err) {
-    res.status(500).json({ message: "Error fetching stats" });
-  }
-});
-
-// UPDATE ORDER STATUS (ADMIN CONTROL)
-router.put("/:id", async (req, res) => {
-  try {
-    const { status } = req.body;
-
-    await Order.findByIdAndUpdate(req.params.id, { status });
-
-    res.json({ message: "Order status updated" });
-  } catch (err) {
-    res.status(500).json({ message: "Error updating order" });
-  }
-});
-
-// GET SINGLE ORDER (DETAIL PAGE)
-router.get("/:id", async (req, res) => {
-  try {
-    const order = await Order.findById(req.params.id);
-
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
+    if (req.body.payment && req.body.payment !== "COD") {
+      return res.status(400).json({ message: "Online orders must be created through the payment API" });
     }
-
-    res.json(order);
-  } catch (err) {
-    res.status(500).json({ message: "Error fetching order" });
+    const { items, total } = await priceItems(req.body.items);
+    const checkout = cleanCheckout(req.body);
+    const order = await Order.create({
+      user: { id: req.auth.sub, email: req.auth.email }, items, ...checkout,
+      payment: "COD", total, finalAmount: Number((total + checkout.margin).toFixed(2)), paymentStatus: "Pending",
+    });
+    return res.status(201).json({ message: "Order saved", order });
+  } catch (error) {
+    return next(error);
   }
+});
+
+router.get("/mine", requireAuth, async (req, res, next) => {
+  try {
+    return res.json(await Order.find({ "user.id": req.auth.sub }).sort({ date: -1 }));
+  } catch (error) { return next(error); }
+});
+
+router.get("/", requireAdmin, async (_req, res, next) => {
+  try { return res.json(await Order.find().sort({ date: -1 })); }
+  catch (error) { return next(error); }
+});
+
+router.get("/stats/summary", requireAdmin, async (_req, res, next) => {
+  try {
+    const orders = await Order.find().lean();
+    return res.json({
+      totalOrders: orders.length,
+      totalRevenue: orders.filter((o) => o.payment === "COD" || o.paymentStatus === "Paid").reduce((sum, o) => sum + (o.finalAmount || 0), 0),
+      pending: orders.filter((o) => o.status === "Pending").length,
+      delivered: orders.filter((o) => o.status === "Delivered").length,
+    });
+  } catch (error) { return next(error); }
+});
+
+router.put("/:id", requireAdmin, async (req, res, next) => {
+  try {
+    const allowed = ["Pending", "Confirmed", "Shipped", "Delivered", "Cancelled"];
+    if (!allowed.includes(req.body.status)) return res.status(400).json({ message: "Invalid order status" });
+    const order = await Order.findByIdAndUpdate(req.params.id, { status: req.body.status }, { new: true, runValidators: true });
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    return res.json({ message: "Order status updated", order });
+  } catch (error) { return next(error); }
+});
+
+router.get("/:id", requireAuth, async (req, res, next) => {
+  try {
+    const query = req.auth.role === "admin" ? { _id: req.params.id } : { _id: req.params.id, "user.id": req.auth.sub };
+    const order = await Order.findOne(query);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    return res.json(order);
+  } catch (error) { return next(error); }
 });
 
 module.exports = router;

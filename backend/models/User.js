@@ -1,8 +1,10 @@
 const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema({
-  email: String,
-  otp: String,
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+  otpHash: { type: String, select: false },
+  otpExpiresAt: { type: Date, select: false },
+  otpAttempts: { type: Number, default: 0, select: false },
   isVerified: { type: Boolean, default: false },
    name: String,
   phone: String,

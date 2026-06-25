@@ -1,6 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminProtectedRoute from "./components/AdminProtectedRoute";
 import Home from "./pages/Home";
 import Shop from "./pages/Shop";
 import Cart from "./pages/Cart";
@@ -30,7 +31,7 @@ function App() {
         <Route path="/cart" element={<Cart />} />
         <Route path="/register" element={<Register />} />
         <Route path="/admin-login" element={<AdminLogin />} />
-        <Route path="/admin" element={<Admin />} />
+        <Route path="/admin" element={<AdminProtectedRoute><Admin /></AdminProtectedRoute>} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/reseller" element={<Reseller />} />
         <Route path="/product/:id" element={<ProductDetail />} />

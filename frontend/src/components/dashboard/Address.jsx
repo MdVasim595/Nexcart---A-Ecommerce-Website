@@ -10,6 +10,7 @@ const Address = () => {
     <div>
       <h2>Address</h2>
       <input
+        value={address}
         placeholder="Enter address"
         onChange={(e) => setAddress(e.target.value)}
       />
@@ -19,3 +20,4 @@ const Address = () => {
 };
 
 export default Address;
+import { useState } from "react";

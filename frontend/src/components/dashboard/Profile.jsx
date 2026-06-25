@@ -1,11 +1,7 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
-
-const API_URL = import.meta.env.VITE_API_URL;
+import { api } from "../../utils/api";
 
 const Profile = () => {
-  const user = JSON.parse(localStorage.getItem("user"));
-
   const [data, setData] = useState({
     name: "",
     phone: "",
@@ -16,8 +12,8 @@ const Profile = () => {
 
   // 🔥 LOAD USER DATA
   useEffect(() => {
-    axios
-  .get(`${API_URL}/user/${user.email}`)
+    api
+  .get("/user/me")
       .then((res) => {
         setData({
           name: res.data.name || "",
@@ -37,14 +33,13 @@ const Profile = () => {
     setLoading(true);
 
     try {
-      await axios.put(`${API_URL}/user/update`, {
-        email: user.email,
+      await api.put("/user/update", {
         name: data.name,
         phone: data.phone,
       });
 
       // 🔥 save ke baad data reload
-      const res = await axios.get(`${API_URL}/user/${user.email}`);
+      const res = await api.get("/user/me");
 
       setData({
         name: res.data.name || "",
@@ -53,7 +48,7 @@ const Profile = () => {
       });
 
       alert("Profile Updated ✅");
-    } catch (err) {
+    } catch {
       alert("Error updating profile");
     }
 

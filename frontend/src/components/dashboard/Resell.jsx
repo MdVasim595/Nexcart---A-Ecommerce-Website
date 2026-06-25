@@ -1,12 +1,8 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
-
-const API_URL = import.meta.env.VITE_API_URL;
+import { api } from "../../utils/api";
 
 const Resell = () => {
   const [orders, setOrders] = useState([]);
-  const user = JSON.parse(localStorage.getItem("user"));
-
   const [stats, setStats] = useState({
     totalOrders: 0,
     totalEarnings: 0,
@@ -14,8 +10,8 @@ const Resell = () => {
   });
 
   useEffect(() => {
-    axios
-  .get(`${API_URL}/order/user/${user.email}`)
+    api
+  .get("/order/mine")
       .then((res) => {
         const resellOrders = res.data.filter((o) => o.resell);
 

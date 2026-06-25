@@ -3,22 +3,18 @@ import { getUser, getData } from "../utils/localStorageHelper";
 import { FaShoppingCart, FaUserCircle } from "react-icons/fa";
 import { MdOutlineShoppingBag, MdLogout } from "react-icons/md";
 import { RiDeleteBin6Line } from "react-icons/ri";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 const Navbar = () => {
   const nav = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
-  const [user, setUser] = useState(null);
-  const [cartCount, setCartCount] = useState(0);
+  const [user] = useState(() => getUser());
+  const [cartCount] = useState(() => getData("cart").length);
   const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    setUser(getUser());
-    setCartCount(getData("cart").length);
-  }, []);
 
   const logout = () => {
     localStorage.removeItem("user");
+    localStorage.removeItem("token");
     window.location.reload();
   };
 

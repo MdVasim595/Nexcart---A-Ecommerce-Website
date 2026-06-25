@@ -1,11 +1,7 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
-
-const API_URL = import.meta.env.VITE_API_URL;
+import { api } from "../../utils/api";
 
 const Earnings = () => {
-  const user = JSON.parse(localStorage.getItem("user"));
-
   const [form, setForm] = useState({
     accountName: "",
     bankName: "",
@@ -28,16 +24,10 @@ const Earnings = () => {
     { amount: 300, status: "Pending" },
   ]);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  async function loadData() {
     try {
       // Orders fetch
-      const orderRes = await axios.get(
-        `${API_URL}/order/user/${user.email}`
-      );
+      const orderRes = await api.get("/order/mine");
 
       const resellOrders = orderRes.data.filter((o) => o.resell);
 
@@ -65,9 +55,7 @@ const Earnings = () => {
       });
 
       // User payout details fetch
-      const userRes = await axios.get(
-        `${API_URL}/user/${user.email}`
-      );
+      const userRes = await api.get("/user/me");
 
       if (userRes.data.payout) {
         setForm(userRes.data.payout);
@@ -76,17 +64,22 @@ const Earnings = () => {
     } catch (err) {
       console.log(err);
     }
-  };
+  }
+
+  useEffect(() => {
+    // Data is fetched asynchronously; state changes only after network responses resolve.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadData();
+  }, []);
 
   const saveDetails = async () => {
     try {
-      await axios.put(`${API_URL}/user/payout`, {
-        email: user.email,
+      await api.put("/user/payout", {
         payout: form,
       });
 
       alert("Payout details saved ✅");
-    } catch (err) {
+    } catch {
       alert("Failed to save details");
     }
   };

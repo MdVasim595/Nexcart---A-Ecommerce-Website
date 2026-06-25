@@ -1,118 +1,56 @@
 const router = require("express").Router();
 const User = require("../models/User");
 const Order = require("../models/Order");
+const { requireAuth, requireAdmin } = require("../middleware/auth");
 
-// ✅ SAVE PAYOUT DETAILS
-router.put("/payout", async (req, res) => {
+router.get("/me", requireAuth, async (req, res, next) => {
   try {
-    const { email, payout } = req.body;
-
-    const user = await User.findOneAndUpdate(
-      { email },
-      { $set: { payout } },
-      { new: true }
-    );
-
-    res.json(user);
-  } catch (err) {
-    res.status(500).json({ message: "Error saving payout" });
-  }
+    const user = await User.findById(req.auth.sub).select("-otp -otpHash -otpExpiresAt -otpAttempts");
+    if (!user) return res.status(404).json({ message: "User not found" });
+    return res.json(user);
+  } catch (error) { return next(error); }
 });
 
-// ✅ UPDATE USER
-router.put("/update", async (req, res) => {
+router.put("/update", requireAuth, async (req, res, next) => {
   try {
-    const { email, name, phone, addresses } = req.body;
-
-    const updateData = {};
-
-    if (name !== undefined) updateData.name = name;
-    if (phone !== undefined) updateData.phone = phone;
-    if (addresses !== undefined) updateData.addresses = addresses;
-
-    const user = await User.findOneAndUpdate(
-      { email },
-      { $set: updateData },
-      { new: true }
-    );
-
-    res.json(user);
-  } catch (err) {
-    res.status(500).json({ message: "Update failed" });
-  }
+    const update = {};
+    if (typeof req.body.name === "string") update.name = req.body.name.trim().slice(0, 100);
+    if (typeof req.body.phone === "string") update.phone = req.body.phone.trim().slice(0, 20);
+    if (Array.isArray(req.body.addresses) && req.body.addresses.length <= 10) update.addresses = req.body.addresses;
+    const user = await User.findByIdAndUpdate(req.auth.sub, { $set: update }, { new: true, runValidators: true }).select("-otpHash");
+    return res.json(user);
+  } catch (error) { return next(error); }
 });
 
-
-// 🔥 ✅ ADMIN - GET ALL USERS WITH STATS
-router.get("/admin/all", async (req, res) => {
+router.put("/payout", requireAuth, async (req, res, next) => {
   try {
-    const users = await User.find().sort({ createdAt: -1 });
-
-    const data = await Promise.all(
-      users.map(async (u) => {
-        const orders = await Order.find({ "user.email": u.email });
-
-        const totalOrders = orders.length;
-
-        const totalSpend = orders.reduce(
-          (sum, o) => sum + (o.finalAmount || 0),
-          0
-        );
-
-        return {
-          _id: u._id,
-          name: u.name,
-          email: u.email,
-          phone: u.phone,
-          isVerified: u.isVerified,
-          totalOrders,
-          totalSpend,
-          createdAt: u.createdAt,
-        };
-      })
-    );
-
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ message: "Error fetching users" });
-  }
+    const payout = req.body.payout;
+    if (!payout || typeof payout !== "object") return res.status(400).json({ message: "Invalid payout details" });
+    const allowed = ["accountName", "bankName", "accountNumber", "ifsc", "upi"];
+    const clean = Object.fromEntries(allowed.map((key) => [key, String(payout[key] || "").trim().slice(0, 100)]));
+    const user = await User.findByIdAndUpdate(req.auth.sub, { $set: { payout: clean } }, { new: true, runValidators: true });
+    return res.json(user);
+  } catch (error) { return next(error); }
 });
 
-
-// 🔥 ✅ ADMIN - SINGLE USER FULL DETAIL (USER + ORDERS)
-router.get("/admin/:email", async (req, res) => {
+router.get("/admin/all", requireAdmin, async (_req, res, next) => {
   try {
-    const user = await User.findOne({ email: req.params.email });
-
-    const orders = await Order.find({
-      "user.email": req.params.email,
-    }).sort({ date: -1 });
-
-    const totalSpend = orders.reduce(
-      (sum, o) => sum + (o.finalAmount || 0),
-      0
-    );
-
-    res.json({
-      user,
-      orders,
-      totalOrders: orders.length,
-      totalSpend,
-    });
-  } catch (err) {
-    res.status(500).json({ message: "Error fetching user detail" });
-  }
+    const users = await User.find().select("-payout").sort({ createdAt: -1 }).lean();
+    const data = await Promise.all(users.map(async (user) => {
+      const orders = await Order.find({ "user.id": user._id }).lean();
+      return { ...user, totalOrders: orders.length, totalSpend: orders.filter((o) => o.payment === "COD" || o.paymentStatus === "Paid").reduce((sum, o) => sum + (o.finalAmount || 0), 0) };
+    }));
+    return res.json(data);
+  } catch (error) { return next(error); }
 });
 
-
-// ✅ GET USER BY EMAIL (IMPORTANT: keep LAST)
-router.get("/:email", async (req, res) => {
+router.get("/admin/:email", requireAdmin, async (req, res, next) => {
   try {
-    const user = await User.findOne({ email: req.params.email });
-    res.json(user);
-  } catch (err) {
-    res.status(500).json({ message: "User fetch failed" });
-  }
+    const user = await User.findOne({ email: String(req.params.email).toLowerCase() }).select("-payout").lean();
+    if (!user) return res.status(404).json({ message: "User not found" });
+    const orders = await Order.find({ "user.id": user._id }).sort({ date: -1 }).lean();
+    return res.json({ user, orders, totalOrders: orders.length, totalSpend: orders.reduce((sum, order) => sum + (order.finalAmount || 0), 0) });
+  } catch (error) { return next(error); }
 });
 
 module.exports = router;

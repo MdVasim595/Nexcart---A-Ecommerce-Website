@@ -1,17 +1,14 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { api } from "../../utils/api";
 import { useNavigate } from "react-router-dom";
-
-const API_URL = import.meta.env.VITE_API_URL;
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
-  const user = JSON.parse(localStorage.getItem("user"));
   const nav = useNavigate();
 
   useEffect(() => {
-    axios
-  .get(`${API_URL}/order/user/${user.email}`)
+    api
+  .get("/order/mine")
   .then((res) => setOrders(res.data));
   }, []);
 

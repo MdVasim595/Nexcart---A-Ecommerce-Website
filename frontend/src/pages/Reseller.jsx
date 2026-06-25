@@ -1,19 +1,14 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { getData, setData } from "../utils/localStorageHelper";
 import { useNavigate } from "react-router-dom";
 
 
 const Reseller = () => {
   const nav = useNavigate();
-  const [products, setProducts] = useState([]);
+  const [products] = useState(() => getData("products"));
   const [margin, setMargin] = useState({});
   const [customer, setCustomer] = useState({});
-  const [earnings, setEarnings] = useState(0);
-
-  useEffect(() => {
-    setProducts(getData("products"));
-    setEarnings(Number(localStorage.getItem("earnings")) || 0);
-  }, []);
+  const [earnings, setEarnings] = useState(() => Number(localStorage.getItem("earnings")) || 0);
 
   const placeResellerOrder = (p) => {
     const m = Number(margin[p.id] || 0);

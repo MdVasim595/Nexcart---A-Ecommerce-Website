@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import ProductCard from "../components/ProductCard";
 import { useLocation } from "react-router-dom";
@@ -6,7 +6,6 @@ import { useLocation } from "react-router-dom";
 const API_URL = import.meta.env.VITE_API_URL;
 
 const Shop = () => {
-  const [products, setProducts] = useState([]);
   const [allProducts, setAllProducts] = useState([]); // 🔥 NEW
   const [category, setCategory] = useState("All");
 
@@ -20,12 +19,11 @@ const Shop = () => {
    axios.get(`${API_URL}/product`)
       .then(res => {
         setAllProducts(res.data);
-        setProducts(res.data);
       });
   }, []);
 
   // 🔥 FILTER LOGIC (same as before)
-  useEffect(() => {
+  const products = useMemo(() => {
     let data = [...allProducts];
 
     // 🔍 Search
@@ -45,7 +43,7 @@ const Shop = () => {
       data = data.filter((p) => p.category === categoryQuery);
     }
 
-    setProducts(data);
+    return data;
 
   }, [search, category, categoryQuery, allProducts]);
 

@@ -5,6 +5,7 @@ const Settings = () => {
 
   const logout = () => {
     localStorage.removeItem("user");
+    localStorage.removeItem("token");
     window.location.reload();
   };
 
@@ -14,6 +15,7 @@ const Settings = () => {
     if (confirmDelete) {
       // 🔥 future backend API call yaha hoga
       localStorage.removeItem("user");
+      localStorage.removeItem("token");
       alert("Account deleted (demo)");
       nav("/");
       window.location.reload();
